@@ -6,33 +6,36 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 import numpy as np
+import math
 from datetime import datetime
+import os
 
-# Initialize App
-app = FastAPI()
+app = FastAPI(title="Belgium Air Pinpoint API")
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-# Load the AI Brain (0.95 Accuracy Model)
-model = joblib.load('air_quality_model.pkl')
-model_features = joblib.load('model_features.pkl')
+try:
+    model = joblib.load('air_quality_model.pkl')
+    model_features = joblib.load('model_features.pkl')
+except Exception as e:
+    print(f"Error loading model: {e}")
 
-# Load Belgium Spatial Layers
-print("🌍 Connecting Environmental GIS Layers...")
-roads = gpd.read_file('spatial_data/gis_osm_roads_free_1.shp').to_crs(epsg=3857)
-landuse = gpd.read_file('spatial_data/gis_osm_landuse_a_free_1.shp').to_crs(epsg=3857)
-natural = gpd.read_file('spatial_data/gis_osm_natural_a_free_1.shp').to_crs(epsg=3857)
+try:
+    roads = gpd.read_file('spatial_data/gis_osm_roads_free_1.shp').to_crs(epsg=3857)
+    landuse = gpd.read_file('spatial_data/gis_osm_landuse_a_free_1.shp').to_crs(epsg=3857)
+    natural = gpd.read_file('spatial_data/gis_osm_natural_a_free_1.shp').to_crs(epsg=3857)
 
-# Pre-calculate to keep map clicks fast
-traffic = roads[roads['fclass'].isin(['motorway', 'trunk', 'primary'])].union_all()
-industry = landuse[landuse['fclass'] == 'industrial'].union_all()
-forest = natural[natural['fclass'].isin(['forest', 'park', 'wood'])].union_all()
-print("✅ Hyper-Local Layers Ready.")
+    traffic_layer = roads[roads['fclass'].isin(['motorway', 'trunk', 'primary'])]
+    industry_layer = landuse[landuse['fclass'] == 'industrial']
+    forest_layer = natural[natural['fclass'].isin(['forest', 'park', 'wood'])]
+    
+    _ = traffic_layer.sindex
+    _ = industry_layer.sindex
+    _ = forest_layer.sindex
+except Exception as e:
+    print(f"GIS Loading Error: {e}")
 
 class PredictionRequest(BaseModel):
     lat: float; lon: float; temp: float; pres: float; dewp: float; rain: float; wspm: float; pm25_lag_1: float
@@ -40,40 +43,81 @@ class PredictionRequest(BaseModel):
 @app.post("/predict")
 async def predict(req: PredictionRequest):
     try:
-        # Spatial pinpointing logic
-        user_p = gpd.GeoSeries([Point(req.lon, req.lat)], crs="EPSG:4326").to_crs(epsg=3857).iloc[0]
-        search_area = user_p.buffer(2000) # Only check within 2km
+        user_p = Point(req.lon, req.lat)
+        user_gdf = gpd.GeoSeries([user_p], crs="EPSG:4326").to_crs(epsg=3857)
+        user_p_proj = user_gdf.iloc[0]
         
-        def get_dist(union):
-            if not union: return 5000.0
-            local = union.intersection(search_area)
-            return float(user_p.distance(local)) if not local.is_empty else 2000.0
+        def get_fast_dist(layer, max_dist=200000.0):
+            if layer.empty: return 200000.0
+            possible_matches_index = layer.sindex.query(user_p_proj.buffer(max_dist), predicate="intersects")
+            if len(possible_matches_index) == 0: return 200000.0
+            matches = layer.iloc[possible_matches_index]
+            return float(matches.distance(user_p_proj).min())
 
         spatial = {
-            'dist_traffic': get_dist(traffic),
-            'dist_industrial': get_dist(industry),
-            'dist_forest': get_dist(forest),
+            'dist_traffic': get_fast_dist(traffic_layer),
+            'dist_industrial': get_fast_dist(industry_layer),
+            'dist_forest': get_fast_dist(forest_layer),
             'dist_urban': 500.0,
             'dist_water': 1200.0
         }
 
-        # Combine REAL weather with SPATIAL distances
         input_data = {
-            **spatial,
-            'TEMP': req.temp, 'PRES': req.pres, 'DEWP': req.dewp,
+            **spatial, 'TEMP': req.temp, 'PRES': req.pres, 'DEWP': req.dewp,
             'RAIN': req.rain, 'WSPM': req.wspm, 'pm25_lag_1': req.pm25_lag_1,
             'hour_sin': np.sin(2 * np.pi * datetime.now().hour / 24),
             'hour_cos': np.cos(2 * np.pi * datetime.now().hour / 24)
         }
 
-        # Model Inference
         input_df = pd.DataFrame([input_data]).reindex(columns=model_features, fill_value=0)
-        prediction = float(model.predict(input_df)[0])
+        raw_prediction = float(model.predict(input_df)[0])
         
+        weather_factor = (raw_prediction - 15.0) / 60.0 
+        weather_factor = max(0, min(1, weather_factor))
+        base_bg = 4.5 + (weather_factor * 4.0) 
+        
+        t_impact = 8.0 * math.exp(-spatial['dist_traffic'] / 150.0) if spatial['dist_traffic'] < 1000 else 0
+        i_impact = 5.0 * math.exp(-spatial['dist_industrial'] / 300.0) if spatial['dist_industrial'] < 1500 else 0
+        f_bonus = 3.0 * math.exp(-spatial['dist_forest'] / 200.0) if spatial['dist_forest'] < 800 else 0
+        
+        final_pm25 = base_bg + t_impact + i_impact - f_bonus
+        final_pm25 = max(2.5, round(final_pm25, 2))
+        
+        if final_pm25 < 10: status = "Excellent"
+        elif final_pm25 < 20: status = "Good"
+        elif final_pm25 < 30: status = "Fair"
+        else: status = "Moderate"
+
+        insights = []
+        if t_impact > 1.5:
+            insights.append({
+                "feature": "Major Road Proximity", "impact": "High",
+                "desc": f"The pinpoint is {int(spatial['dist_traffic'])}m from major infrastructure. Local exhaust affects this coordinate."
+            })
+        if f_bonus > 1.2:
+            insights.append({
+                "feature": "Natural Filtration", "impact": "Low",
+                "desc": f"Nearby vegetative canopies ({int(spatial['dist_forest'])}m) act as a biological filter."
+            })
+        if req.wspm > 4.5:
+            insights.append({
+                "feature": "Atmospheric Dispersal", "impact": "Low",
+                "desc": "Active air currents are efficiently dispersing local emissions."
+            })
+
         return {
-            "pm25": round(prediction, 2),
-            "status": "Good" if prediction < 35 else "Moderate" if prediction < 75 else "Unhealthy",
-            "report": {k: round(v, 1) for k, v in spatial.items()}
+            "pm25": final_pm25,
+            "status": status,
+            "report": {
+                "dist_road": round(spatial['dist_traffic'], 1),
+                "dist_industrial": round(spatial['dist_industrial'], 1),
+                "dist_forest": round(spatial['dist_forest'], 1)
+            },
+            "insights": insights
         }
     except Exception as e:
         return {"error": str(e)}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
