@@ -5,3 +5,7 @@ __pycache__/
 # Ignore large model files and spatial data
 *.pkl
 spatial_data/
+node_modules/
+.venv/
+__pycache__/
+*.pkl
