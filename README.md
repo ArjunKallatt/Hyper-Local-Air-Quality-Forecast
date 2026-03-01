@@ -1,131 +1,239 @@
-🌍 Belgium Air Pinpoint
+# 🌍 Hyper-Local Air Quality Forecast
 
-Belgium Air Pinpoint is an end-to-end predictive intelligence system designed to bridge the "Resolution Gap" in urban air quality monitoring. While traditional monitoring stations are geographically sparse, this system provides street-level PM2.5 forecasting by fusing Gradient Boosting Machine Learning with high-resolution National GIS data.
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Research%20Project-yellow)
 
-🚀 Key Features
+A machine learning project for predicting **hyper-local air pollution levels** using environmental, meteorological, and geospatial datasets.
 
-📍 Hyper-Local Precision: Predicts PM2.5 concentrations at specific coordinates using national road, industrial, and natural forest GIS layers.
+The system integrates multiple real-world data sources such as weather, emissions inventory, traffic density, and proximity features to estimate pollution levels at fine geographic resolution without requiring complex physical simulations.
 
-🧠 Explainable AI (XAI): Uses surrogate SHAP logic to explain why a location is high-risk (e.g., "Low wind dispersal + High traffic proximity").
+---
 
-🔥 Dynamic Spatial Heatmaps: Visualizes continuous pollution clouds over neighborhoods using procedural dispersion modeling via Leaflet.heat.
+## 📌 Table of Contents
 
-⚡ High-Speed Spatial Indexing: Utilizes R-tree SINDEX logic to query infrastructure within a 200km radius in sub-second time.
+- [What the Project Does](#-what-the-project-does)
+- [Why the Project Is Useful](#-why-the-project-is-useful)
+- [Getting Started](#-getting-started)
+- [Project Structure](#-project-structure)
+- [Usage](#-usage)
+- [Where to Get Help](#-where-to-get-help)
+- [Maintainers and Contributors](#-maintainers-and-contributors)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-🔍 Intelligent Search: Integrated geocoding search limited to the Belgian national boundary via the Nominatim API.
+---
 
-📏 Visual Ruler: Interactive UI element connecting user coordinates to the nearest primary pollution source.
+## 📌 What the Project Does
 
-📊 Model Performance
+This project builds machine learning models capable of estimating air quality variations across small geographic regions using:
 
-The core inference engine is an XGBoost Regressor trained on a massive multi-station dataset of 420,768 records.
+- Historical pollutant measurements  
+- Local weather conditions  
+- Traffic density and road proximity  
+- Industrial emissions data  
+- Geospatial distance features  
 
-Metric
+The objective is to demonstrate how **data-driven modeling** can provide hyper-local environmental insights where monitoring sensors are limited or unavailable.
 
-Value
+---
 
-Coefficient of Determination ($R^2$)
+## 🚀 Why the Project Is Useful
 
-0.9579
+### Key Benefits
 
-Mean Absolute Error (MAE)
+- Predict air quality at fine spatial resolution
+- Integrates multiple environmental datasets into a single pipeline
+- End-to-end workflow from data collection → modeling → visualization
+- Useful for environmental research and smart city planning
 
-9.8424 $\mu g/m^3$
+### Features
 
-Root Mean Square Error (RMSE)
+- Data ingestion from APIs and public datasets
+- Geospatial feature engineering
+- Exploratory Data Analysis (EDA)
+- Machine learning modeling
+- Visualization notebooks
+- Research documentation
 
-22.5372 $\mu g/m^3$
+---
 
-[!TIP]
-For a technical deep dive into the feature engineering and mathematical modeling, refer to the full research paper documentation included in this repository.
+## 🏁 Getting Started
 
-📦 Getting Started
+### Prerequisites
 
-📋 Prerequisites
+Make sure you have:
 
-Python 3.9+
+- Python 3.8+
+- pip or conda
+- Jupyter Notebook or JupyterLab
 
-Node.js v16+ & npm
+Optional but recommended:
 
-OpenWeatherMap API Key (Obtainable at openweathermap.org)
+- Virtual environment (venv or conda)
 
-🛠️ Installation & Setup
+---
 
-Clone the Repository
+### Installation
 
-git clone [https://github.com/yourusername/belgium-air-pinpoint.git](https://github.com/yourusername/belgium-air-pinpoint.git)
-cd belgium-air-pinpoint
+Clone the repository:
 
+```bash
+git clone https://github.com/ArjunKallatt/Hyper-Local-Air-Quality-Forecast.git
+cd Hyper-Local-Air-Quality-Forecast
+```
 
-Backend Configuration
+Create a virtual environment:
 
-cd backend
-python -m venv .venv
+```bash
+python -m venv venv
+source venv/bin/activate   # Linux / macOS
+venv\Scripts\activate      # Windows
+```
 
-# Linux/macOS
-source .venv/bin/activate
-# Windows
-.venv\Scripts\activate
+Install dependencies:
 
+```bash
 pip install -r requirements.txt
+```
 
+If `requirements.txt` is not available:
 
-Note: Ensure your spatial_data/ folder contains the required .shp files.
+```bash
+pip install pandas numpy scikit-learn matplotlib seaborn geopandas jupyter requests
+```
 
-Frontend Configuration
+---
 
-cd ../frontend
-npm install
+## 📂 Project Structure
 
+```
+.
+├── Data/                  # Raw and processed datasets
+├── Notebooks/             # Jupyter notebooks for workflow
+├── Images/                # Visual assets
+├── Docs/                  # Documentation and reports
+├── Correlations/          # Analysis outputs
+├── Application/           # Application components (if applicable)
+├── Final Report/          # Final research deliverables
+└── README.md
+```
 
-🛠️ Usage
+---
 
-Running the System
+## ▶️ Usage
 
-Start Backend:
+Launch Jupyter Notebook:
 
-# Inside the backend directory
-uvicorn main:app --reload
+```bash
+jupyter notebook
+```
 
+Navigate to the notebooks directory and run notebooks sequentially to execute the pipeline:
 
-Start Frontend:
+1. Data Collection  
+2. Feature Engineering  
+3. Exploratory Analysis  
+4. Model Training  
+5. Visualization  
 
-# Inside the frontend directory
-npm start
+Example model usage:
 
+```python
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 
-Access Dashboard:
+data = pd.read_csv("Data/final_dataset.csv")
 
-Open http://localhost:3000
+X = data.drop("target_pollution", axis=1)
+y = data["target_pollution"]
 
-Search for a city (e.g., "Antwerp") or click anywhere on the Belgian map.
+model = RandomForestRegressor()
+model.fit(X, y)
 
-🏗️ System Architecture
+predictions = model.predict(X.head())
+```
 
-The project implements a decoupled 3-tier architecture:
+---
 
-Presentation Layer: React.js SPA utilizing Leaflet for geospatial rendering and procedural heatmap generation.
+## ❓ Where to Get Help
 
-Logic Layer: FastAPI handling asynchronous meteorological fetching and SINDEX proximity querying.
+If you encounter issues or have questions:
 
-Data Layer: Pre-trained XGBoost model with serialized feature pipelines for real-time inference.
+- Open an issue in the repository
+- Review documentation inside the `Docs/` folder
+- Check notebook comments for explanations
 
-👥 Research Group (KP290)
+GitHub Issues:
 
-School of Computer Science and Engineering
+https://github.com/ArjunKallatt/Hyper-Local-Air-Quality-Forecast/issues
 
-Lovely Professional University
+---
 
-Supervisor: Mr. Manish Singh
+## 👥 Maintainers and Contributors
 
-📜 License
+**Maintainer**
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+Arjun Kallatt  
+Computer Science Student | Machine Learning & Cybersecurity Enthusiast  
 
-🙏 Acknowledgments
+GitHub: https://github.com/ArjunKallatt
 
-OpenStreetMap: National GIS infrastructure data.
+---
 
-OpenWeatherMap: Real-time atmospheric API.
+## 🤝 Contributing
 
-IRCEL-CELINE: Air quality benchmarking standards in Belgium.
+Contributions are welcome.
+
+Steps to contribute:
+
+1. Fork the repository  
+2. Create a feature branch  
+
+```bash
+git checkout -b feature-name
+```
+
+3. Commit your changes  
+
+```bash
+git commit -m "Add new feature"
+```
+
+4. Push to your branch  
+
+```bash
+git push origin feature-name
+```
+
+5. Open a Pull Request  
+
+---
+
+## 🧾 License
+
+This project is licensed under the MIT License.  
+See the `LICENSE` file for details.
+
+---
+
+## ⭐ Acknowledgements
+
+- OpenStreetMap  
+- Daymet API  
+- National Emissions Inventory  
+- Public environmental datasets  
+
+---
+
+## 📬 Future Improvements
+
+- Real-time prediction API  
+- Web dashboard deployment  
+- Deep learning spatial models  
+- Cloud deployment pipeline  
+
+---
+
+If you find this project useful, consider giving it a ⭐ on GitHub.
