@@ -1,0 +1,32 @@
+# Core
+numpy
+pandas
+scikit-learn
+scipy
+
+# Visualization
+matplotlib
+seaborn
+
+# Geospatial
+geopandas
+shapely
+pyproj
+
+# Machine Learning / Explainability
+xgboost
+joblib
+
+# Backend API
+fastapi
+uvicorn
+python-multipart
+
+# Utilities
+requests
+python-dotenv
+
+# Development / Notebooks (optional but useful)
+jupyter
+notebook
+ipykernel
