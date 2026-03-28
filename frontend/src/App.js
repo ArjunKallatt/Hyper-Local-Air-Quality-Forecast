@@ -1,21 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-/**
- * BELGIUM AIR PINPOINT - FRONTEND
- * Optimized for high performance and high-detail terrain.
- * Features: Hyper-local search, 200km GIS limit, XAI insights, Visual Ruler.
- * Fixed: Map tiles updated for better road/terrain/water visibility.
- */
+ //BELGIUM AIR PINPOINT - FRONTEND
 
 const PROJECT_NAME = "Belgium Air Pinpoint";
+//
+//
+//
+//
+//put the api into .env files later cause this is a security risk
+//
+//
+//
+//
 const API_KEY = 'cd505863f1197b924659fb4fb195ba30'; 
 const BELGIUM_BOUNDS = [
-    [49.4969, 2.3847], // South-West
-    [51.5517, 6.4081]  // North-East
+    [-90, -180], // South-West (Bottom-Left of the world)
+    [90, 180]  // North-East
 ];
 
-// --- STABLE SVG ICONS (Professional Design, Emoji-Free) ---
 const Icons = {
   Car: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
   Tree: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-8"/><path d="M19 12a7 7 0 1 0-14 0c0 1.5.5 2.9 1.3 4.1L5 20h14l-1.3-3.9c.8-1.2 1.3-2.6 1.3-4.1Z"/><path d="M12 12a3 3 0 0 1 0-6 3 3 0 0 1 0 6Z"/></svg>,
@@ -41,7 +44,6 @@ export default function App() {
     const mapInstance = useRef(null);
     const rulerInstance = useRef(null);
 
-    // --- OPTIMIZED LIBRARY LOADING ---
     useEffect(() => {
         if (window.L) {
             setLibLoaded(true);
@@ -59,7 +61,7 @@ export default function App() {
         document.head.appendChild(script);
     }, []);
 
-    // --- MAP INITIALIZATION ---
+    // Map Foramations starts here
     useEffect(() => {
         if (!libLoaded || !mapRef.current || mapInstance.current) return;
         const L = window.L;
@@ -72,7 +74,6 @@ export default function App() {
             maxBoundsViscosity: 1.0
         });
 
-        // Use CartoDB Voyager tiles - very crisp, shows roads, water, and green terrain clearly.
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
@@ -86,7 +87,7 @@ export default function App() {
         mapInstance.current = map;
     }, [libLoaded]);
 
-    // --- VISUAL RULER LOGIC ---
+    // The ruler code here, to point to nearest hotspots
     useEffect(() => {
         if (!mapInstance.current || !prediction || !clickCoords || !window.L) return;
         const L = window.L;
@@ -156,7 +157,6 @@ export default function App() {
                 const latitude = parseFloat(lat);
                 const longitude = parseFloat(lon);
 
-                // Zoom to level 13 to see roads clearly without pixelating map labels
                 mapInstance.current.flyTo([latitude, longitude], 13, { duration: 1.2 });
                 handleInferenceRequest(latitude, longitude);
             } else {
