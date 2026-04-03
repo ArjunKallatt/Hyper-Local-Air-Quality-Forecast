@@ -1,40 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
- //BELGIUM AIR PINPOINT - FRONTEND
-
-const PROJECT_NAME = "Belgium Air Pinpoint";
-//
-//
-//
-//
-//put the api into .env files later cause this is a security risk
-//
-//
-//
-//
-const API_KEY = 'cd505863f1197b924659fb4fb195ba30'; 
-const BELGIUM_BOUNDS = [
-    [-90, -180], // South-West (Bottom-Left of the world)
-    [90, 180]  // North-East
+const PROJECT_NAME = "India Air Pinpoint";
+const API_KEY = 'cd505863f1197b924659fb4fb195ba30';
+const INDIA_BOUNDS = [
+    [6.5, 68.0],
+    [37.5, 97.5]
 ];
 
+const getStatusColor = (pm25) => {
+    if (pm25 < 30)  return { bg: '#f0fff4', border: '#9ae6b4' };
+    if (pm25 < 60)  return { bg: '#fffff0', border: '#f6e05e' };
+    if (pm25 < 90)  return { bg: '#fffaf0', border: '#fbd38d' };
+    if (pm25 < 120) return { bg: '#fff5f5', border: '#feb2b2' };
+    if (pm25 < 250) return { bg: '#fff0f0', border: '#fc8181' };
+    return                 { bg: '#ffe5e5', border: '#e53e3e' };
+};
+
 const Icons = {
-  Car: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
-  Tree: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-8"/><path d="M19 12a7 7 0 1 0-14 0c0 1.5.5 2.9 1.3 4.1L5 20h14l-1.3-3.9c.8-1.2 1.3-2.6 1.3-4.1Z"/><path d="M12 12a3 3 0 0 1 0-6 3 3 0 0 1 0 6Z"/></svg>,
-  Factory: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20V9l4-2v13"/><path d="M18 20V7l4-2v15"/><path d="M10 20V5l4-2v17"/><path d="M2 20h20"/></svg>,
-  Info: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,
-  Wind: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>,
-  Activity: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
-  ShieldCheck: ({ color }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>,
-  MapPin: ({ opacity = 1 }) => <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
-  Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
-  Navigation: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+    Car: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
+    Tree: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-8"/><path d="M19 12a7 7 0 1 0-14 0c0 1.5.5 2.9 1.3 4.1L5 20h14l-1.3-3.9c.8-1.2 1.3-2.6 1.3-4.1Z"/><path d="M12 12a3 3 0 0 1 0-6 3 3 0 0 1 0 6Z"/></svg>,
+    Factory: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20V9l4-2v13"/><path d="M18 20V7l4-2v15"/><path d="M10 20V5l4-2v17"/><path d="M2 20h20"/></svg>,
+    Info: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,
+    Wind: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>,
+    Activity: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+    ShieldCheck: ({ color }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>,
+    MapPin: ({ opacity = 1 }) => <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity }}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
+    Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+    Navigation: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
 };
 
 export default function App() {
     const [prediction, setPrediction] = useState(null);
-    const [status, setStatus] = useState("Select a coordinate in Belgium to analyze PM2.5");
+    const [status, setStatus] = useState("Select a coordinate in India to analyze PM2.5");
     const [clickCoords, setClickCoords] = useState(null);
     const [libLoaded, setLibLoaded] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -45,15 +43,11 @@ export default function App() {
     const rulerInstance = useRef(null);
 
     useEffect(() => {
-        if (window.L) {
-            setLibLoaded(true);
-            return;
-        }
+        if (window.L) { setLibLoaded(true); return; }
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         document.head.appendChild(link);
-
         const script = document.createElement('script');
         script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
         script.async = true;
@@ -61,16 +55,15 @@ export default function App() {
         document.head.appendChild(script);
     }, []);
 
-    // Map Foramations starts here
     useEffect(() => {
         if (!libLoaded || !mapRef.current || mapInstance.current) return;
         const L = window.L;
         const map = L.map(mapRef.current, {
-            center: [50.85, 4.35],
-            zoom: 10,
-            minZoom: 8,
+            center: [20.59, 78.96],
+            zoom: 5,
+            minZoom: 4,
             maxZoom: 18,
-            maxBounds: BELGIUM_BOUNDS,
+            maxBounds: INDIA_BOUNDS,
             maxBoundsViscosity: 1.0
         });
 
@@ -87,7 +80,6 @@ export default function App() {
         mapInstance.current = map;
     }, [libLoaded]);
 
-    // The ruler code here, to point to nearest hotspots
     useEffect(() => {
         if (!mapInstance.current || !prediction || !clickCoords || !window.L) return;
         const L = window.L;
@@ -99,18 +91,11 @@ export default function App() {
         if (distance < 10000) {
             const renderDist = distance === 0 ? 5 : distance;
             const sourcePos = [clickCoords.lat + (renderDist / 111320), clickCoords.lng];
-
             const polyline = L.polyline([[clickCoords.lat, clickCoords.lng], sourcePos], {
-                color: '#d32f2f',
-                dashArray: '8, 8',
-                weight: 3
+                color: '#d32f2f', dashArray: '8, 8', weight: 3
             }).addTo(mapInstance.current);
-
             polyline.bindTooltip(`${Math.round(distance)}m to Major Road`, {
-                permanent: true,
-                direction: 'top',
-                opacity: 0.9,
-                offset: [0, -10]
+                permanent: true, direction: 'top', opacity: 0.9, offset: [0, -10]
             });
             rulerInstance.current = polyline;
         }
@@ -124,17 +109,15 @@ export default function App() {
                 `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${API_KEY}&units=metric`
             );
             const w = wRes.data;
-
             const res = await axios.post('http://127.0.0.1:8000/predict', {
                 lat, lon: lng,
-                temp: w.main.temp, 
+                temp: w.main.temp,
                 pres: w.main.pressure,
                 dewp: w.main.temp - ((100 - w.main.humidity) / 5),
                 rain: w.rain ? w.rain['1h'] || 0 : 0,
                 wspm: w.wind.speed,
                 pm25_lag_1: 25
             });
-
             setPrediction(res.data);
             setStatus(`Analysis complete for ${w.name || 'selected coordinate'}`);
         } catch (err) {
@@ -145,22 +128,20 @@ export default function App() {
     const handleSearch = async (e) => {
         if (e) e.preventDefault();
         if (!searchQuery.trim() || !mapInstance.current) return;
-
         setIsSearching(true);
         setStatus("Locating...");
-
         try {
-            const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=be&limit=1`);
-            
+            const response = await axios.get(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=1`
+            );
             if (response.data && response.data.length > 0) {
                 const { lat, lon } = response.data[0];
                 const latitude = parseFloat(lat);
                 const longitude = parseFloat(lon);
-
                 mapInstance.current.flyTo([latitude, longitude], 13, { duration: 1.2 });
                 handleInferenceRequest(latitude, longitude);
             } else {
-                setStatus("Location not found in Belgium.");
+                setStatus("Location not found in India.");
             }
         } catch (error) {
             setStatus("Search error.");
@@ -171,7 +152,7 @@ export default function App() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: 'Inter, sans-serif', overflow: 'hidden' }}>
-            {/* MAP SECTION */}
+            {/* MAP */}
             <div style={{ flex: 2, position: 'relative' }}>
                 <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
                 {!libLoaded && (
@@ -180,48 +161,38 @@ export default function App() {
                     </div>
                 )}
             </div>
-            
-            {/* SIDEBAR SECTION */}
+
+            {/* SIDEBAR */}
             <div style={{ flex: 1, padding: '30px', background: '#fcfcfc', borderLeft: '1px solid #ddd', overflowY: 'auto' }}>
                 <h1 style={{ fontSize: '1.6rem', color: '#333', fontWeight: 'bold', margin: 0 }}>{PROJECT_NAME}</h1>
                 <p style={{ fontStyle: 'italic', color: '#777', marginTop: '8px', fontSize: '0.85rem' }}>{status}</p>
-                
+
                 {/* Search Bar */}
                 <form onSubmit={handleSearch} style={{ display: 'flex', marginTop: '20px', gap: '8px' }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                         <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>
                             <Icons.Search />
                         </div>
-                        <input 
-                            type="text" 
-                            placeholder="Search places in Belgium..." 
+                        <input
+                            type="text"
+                            placeholder="Search places in India..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             disabled={isSearching}
-                            style={{ 
-                                width: '100%', 
-                                padding: '10px 10px 10px 35px', 
-                                borderRadius: '8px', 
-                                border: '1px solid #ddd',
-                                fontSize: '0.9rem',
-                                outline: 'none'
+                            style={{
+                                width: '100%', padding: '10px 10px 10px 35px', borderRadius: '8px',
+                                border: '1px solid #ddd', fontSize: '0.9rem', outline: 'none',
+                                boxSizing: 'border-box'
                             }}
                         />
                     </div>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={isSearching}
-                        style={{ 
-                            padding: '10px 15px', 
-                            background: '#3b82f6', 
-                            color: 'white', 
-                            border: 'none', 
-                            borderRadius: '8px', 
-                            cursor: isSearching ? 'not-allowed' : 'pointer',
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px'
+                        style={{
+                            padding: '10px 15px', background: '#3b82f6', color: 'white',
+                            border: 'none', borderRadius: '8px', cursor: isSearching ? 'not-allowed' : 'pointer',
+                            fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '5px'
                         }}
                     >
                         {isSearching ? '...' : <Icons.Navigation />}
@@ -229,65 +200,90 @@ export default function App() {
                 </form>
 
                 <hr style={{ border: '0', borderTop: '1px solid #eee', margin: '20px 0' }} />
-                
+
                 {prediction ? (
                     <div className="fade-in">
-                        <div style={{ 
-                            padding: '30px', borderRadius: '24px', textAlign: 'center',
-                            background: prediction.pm25 > 25 ? '#fff5f5' : '#f0fff4',
-                            border: `2px solid ${prediction.pm25 > 25 ? '#feb2b2' : '#9ae6b4'}`,
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
-                        }}>
-                            <h3 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.9rem', color: '#555' }}>
-                                {prediction.status}
-                            </h3>
-                            <h1 style={{ fontSize: '5rem', margin: '15px 0', fontWeight: '800', color: '#1a202c' }}>
-                                {prediction.pm25}
-                            </h1>
-                            <p style={{ fontWeight: '600', color: '#4a5568', margin: 0 }}>Concentration (PM2.5)</p>
+                        {/* PM2.5 Score Card */}
+                        {(() => {
+                            const colors = getStatusColor(prediction.pm25);
+                            return (
+                                <div style={{
+                                    padding: '30px', borderRadius: '24px', textAlign: 'center',
+                                    background: colors.bg,
+                                    border: `2px solid ${colors.border}`,
+                                    boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+                                }}>
+                                    <h3 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.9rem', color: '#555' }}>
+                                        {prediction.status}
+                                    </h3>
+                                    <h1 style={{ fontSize: '5rem', margin: '15px 0', fontWeight: '800', color: '#1a202c' }}>
+                                        {prediction.pm25}
+                                    </h1>
+                                    <p style={{ fontWeight: '600', color: '#4a5568', margin: 0 }}>Concentration (PM2.5 µg/m³)</p>
+                                </div>
+                            );
+                        })()}
+
+                        {/* NAQI Legend */}
+                        <div style={{ marginTop: '15px', padding: '12px 16px', background: 'white', borderRadius: '12px', border: '1px solid #eee' }}>
+                            <p style={{ margin: '0 0 8px 0', fontSize: '0.75rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>India NAQI Scale</p>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                {[
+                                    { label: 'Good', color: '#9ae6b4', range: '<30' },
+                                    { label: 'Satisfactory', color: '#f6e05e', range: '<60' },
+                                    { label: 'Moderate', color: '#fbd38d', range: '<90' },
+                                    { label: 'Poor', color: '#feb2b2', range: '<120' },
+                                    { label: 'Very Poor', color: '#fc8181', range: '<250' },
+                                    { label: 'Severe', color: '#e53e3e', range: '250+' },
+                                ].map((s) => (
+                                    <div key={s.label} style={{ flex: 1, textAlign: 'center' }}>
+                                        <div style={{ height: '6px', borderRadius: '3px', background: s.color, marginBottom: '4px' }} />
+                                        <span style={{ fontSize: '0.6rem', color: '#888' }}>{s.range}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
+                        {/* XAI Insights */}
                         <div style={{ marginTop: '25px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
                                 <Icons.Info />
                                 <h4 style={{ color: '#334155', margin: 0, fontWeight: 'bold' }}>AI Explainability (XAI)</h4>
                             </div>
-                            {prediction.insights && prediction.insights.map((item, i) => (
-                                <div key={i} style={{ 
-                                    marginBottom: '10px', 
-                                    padding: '12px', 
-                                    borderRadius: '12px', 
-                                    background: item.impact === 'High' ? '#fff1f2' : '#f0fdf4', 
+                            {prediction.insights && prediction.insights.length > 0 ? prediction.insights.map((item, i) => (
+                                <div key={i} style={{
+                                    marginBottom: '10px', padding: '12px', borderRadius: '12px',
+                                    background: item.impact === 'High' ? '#fff1f2' : '#f0fdf4',
                                     borderLeft: `5px solid ${item.impact === 'High' ? '#e11d48' : '#22c55e'}`,
                                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                                 }}>
                                     <strong style={{ fontSize: '0.9rem', color: '#2d3748' }}>{item.feature}</strong>
                                     <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#4a5568', lineHeight: '1.4' }}>{item.desc}</p>
                                 </div>
-                            ))}
+                            )) : (
+                                <p style={{ fontSize: '0.85rem', color: '#aaa', fontStyle: 'italic' }}>No significant local factors detected.</p>
+                            )}
                         </div>
 
+                        {/* GIS Data */}
                         <div style={{ marginTop: '25px', padding: '20px', background: 'white', borderRadius: '15px', border: '1px solid #eee' }}>
                             <h4 style={{ margin: '0 0 15px 0', fontWeight: 'bold', color: '#4a5568' }}>Hyper-Local GIS Data</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Icons.Car />
-                                        <span>Major Road:</span>
+                                        <Icons.Car /><span>Major Road:</span>
                                     </div>
                                     <span style={{ fontWeight: 'bold' }}>{prediction.report?.dist_road}m</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Icons.Tree />
-                                        <span>Forest Sink:</span>
+                                        <Icons.Tree /><span>Forest Sink:</span>
                                     </div>
                                     <span style={{ fontWeight: 'bold' }}>{prediction.report?.dist_forest}m</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Icons.Factory />
-                                        <span>Industrial Area:</span>
+                                        <Icons.Factory /><span>Industrial Area:</span>
                                     </div>
                                     <span style={{ fontWeight: 'bold' }}>{prediction.report?.dist_industrial}m</span>
                                 </div>
@@ -301,11 +297,9 @@ export default function App() {
                     </div>
                 )}
             </div>
+
             <style>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
                 .fade-in { animation: fadeIn 0.5s ease-out; }
             `}</style>
         </div>

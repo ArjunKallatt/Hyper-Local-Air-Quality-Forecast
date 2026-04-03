@@ -10,7 +10,7 @@ import math
 from datetime import datetime
 import os
 
-app = FastAPI(title="Belgium Air Pinpoint API")
+app = FastAPI(title="India Air Pinpoint API")
 
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
@@ -30,7 +30,7 @@ try:
     traffic_layer = roads[roads['fclass'].isin(['motorway', 'trunk', 'primary'])]
     industry_layer = landuse[landuse['fclass'] == 'industrial']
     forest_layer = natural[natural['fclass'].isin(['forest', 'park', 'wood'])]
-    
+
     _ = traffic_layer.sindex
     _ = industry_layer.sindex
     _ = forest_layer.sindex
@@ -46,7 +46,7 @@ async def predict(req: PredictionRequest):
         user_p = Point(req.lon, req.lat)
         user_gdf = gpd.GeoSeries([user_p], crs="EPSG:4326").to_crs(epsg=3857)
         user_p_proj = user_gdf.iloc[0]
-        
+
         def get_fast_dist(layer, max_dist=200000.0):
             if layer.empty: return 200000.0
             possible_matches_index = layer.sindex.query(user_p_proj.buffer(max_dist), predicate="intersects")
@@ -71,22 +71,29 @@ async def predict(req: PredictionRequest):
 
         input_df = pd.DataFrame([input_data]).reindex(columns=model_features, fill_value=0)
         raw_prediction = float(model.predict(input_df)[0])
-        
-        weather_factor = (raw_prediction - 15.0) / 60.0 
+
+        # Normalize weather factor across India-realistic model range (15–200 µg/m³)
+        weather_factor = (raw_prediction - 15.0) / 185.0
         weather_factor = max(0, min(1, weather_factor))
-        base_bg = 4.5 + (weather_factor * 4.0) 
-        
-        t_impact = 8.0 * math.exp(-spatial['dist_traffic'] / 150.0) if spatial['dist_traffic'] < 1000 else 0
-        i_impact = 5.0 * math.exp(-spatial['dist_industrial'] / 300.0) if spatial['dist_industrial'] < 1500 else 0
-        f_bonus = 3.0 * math.exp(-spatial['dist_forest'] / 200.0) if spatial['dist_forest'] < 800 else 0
-        
+
+        # Base background: India ranges from ~15 (clean rural) to ~120 (polluted urban)
+        base_bg = 15.0 + (weather_factor * 105.0)
+
+        # Spatial impacts scaled for India
+        t_impact = 40.0 * math.exp(-spatial['dist_traffic'] / 150.0) if spatial['dist_traffic'] < 1000 else 0
+        i_impact = 30.0 * math.exp(-spatial['dist_industrial'] / 300.0) if spatial['dist_industrial'] < 1500 else 0
+        f_bonus  =  8.0 * math.exp(-spatial['dist_forest'] / 200.0) if spatial['dist_forest'] < 800 else 0
+
         final_pm25 = base_bg + t_impact + i_impact - f_bonus
-        final_pm25 = max(2.5, round(final_pm25, 2))
-        
-        if final_pm25 < 10: status = "Excellent"
-        elif final_pm25 < 20: status = "Good"
-        elif final_pm25 < 30: status = "Fair"
-        else: status = "Moderate"
+        final_pm25 = max(5.0, round(final_pm25, 2))
+
+        # India NAQI breakpoints
+        if final_pm25 < 30:    status = "Good"
+        elif final_pm25 < 60:  status = "Satisfactory"
+        elif final_pm25 < 90:  status = "Moderate"
+        elif final_pm25 < 120: status = "Poor"
+        elif final_pm25 < 250: status = "Very Poor"
+        else:                  status = "Severe"
 
         insights = []
         if t_impact > 1.5:
@@ -103,6 +110,11 @@ async def predict(req: PredictionRequest):
             insights.append({
                 "feature": "Atmospheric Dispersal", "impact": "Low",
                 "desc": "Active air currents are efficiently dispersing local emissions."
+            })
+        if i_impact > 1.5:
+            insights.append({
+                "feature": "Industrial Zone Proximity", "impact": "High",
+                "desc": f"Industrial area detected {int(spatial['dist_industrial'])}m away. Particulate emissions elevate local PM2.5."
             })
 
         return {
