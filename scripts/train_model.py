@@ -4,6 +4,7 @@ import glob
 import joblib
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.metrics import r2_score
 
 # 1. STATION COORDINATES (The "Secret Sauce")
@@ -26,7 +27,7 @@ STATION_FEATURES = {
 }
 
 def load_data():
-    all_files = glob.glob("/home/aaru/projects/capstone/data/datasets/PRSA_Data_*.csv")
+    all_files = glob.glob("/home/aaru/projects/Hyper Local Air Quality Forcast/data/datasets/PRSA_Data_*.csv")
     df_list = []
     
     for filename in all_files:
@@ -68,8 +69,14 @@ model.fit(X_train, y_train)
 
 # 5. SAVE & VALIDATE
 y_pred = model.predict(X_test)
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
 print(f"✅ Training Complete! R^2 Score: {r2_score(y_test, y_pred):.4f}")
-
+print(f"R2 Score: {r2_score(y_test, y_pred):.4f}")
+print(f"MAE (Mean Absolute Error): {mae:.2f}")
+print(f"MSE (Mean Squared Error): {mse:.2f}")
+print(f"RMSE (Root Mean Squared Error): {rmse:.2f}")
 joblib.dump(model, 'air_quality_model.pkl')
 joblib.dump(features, 'model_features.pkl')
 print("📦 Model and Features saved to /backend")
